@@ -43,7 +43,7 @@
     <fragment
         android:id="@+id/chatListFragment"
         android:name="com.srm325.gobble.ui.features.chat.ChatListFragment"
-        android:label="Recent"
+        android:label="Thanksgiving dinners near me"
         tools:layout="@layout/chat_list_fragment" />
     <fragment
         android:id="@+id/winnerFragment"

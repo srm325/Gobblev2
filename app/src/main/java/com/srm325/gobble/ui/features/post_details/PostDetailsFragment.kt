@@ -88,10 +88,7 @@ class PostDetailsFragment : Fragment() {
                         dialog.dismiss()
                     }
                     .setPositiveButton(resources.getString(R.string.accept)) { _, _ ->
-                        val winner = (post.claimers.indices-1).random()
-                        Timber.d(winner.toString())
-                        post.winner = post.claimers[winner]
-                        viewModel.setWinner(post)
+                        draw_winner_button.text = getString(R.string.the_winner_is)
                     }
                     .show()
 

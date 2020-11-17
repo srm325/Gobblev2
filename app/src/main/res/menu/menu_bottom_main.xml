@@ -12,7 +12,7 @@
     <item
         android:icon="@drawable/ic_chat"
         android:id="@+id/chatListFragment"
-        android:title="@string/create_post" />
+        android:title="@string/Dinners_near_me" />
     <item
         android:icon="@drawable/ic_baseline_menu_24"
         android:id="@+id/menuFragment"
