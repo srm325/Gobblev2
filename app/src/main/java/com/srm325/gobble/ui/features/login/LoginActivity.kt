@@ -19,7 +19,6 @@ import kotlinx.android.synthetic.main.activity_login.*
 import timber.log.Timber
 
 
-
 class LoginActivity: AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
@@ -52,14 +51,13 @@ class LoginActivity: AppCompatActivity() {
             sendToMainActivity()
     }
 
-    private fun signIn() {
+        private fun signIn() {
         val signInIntent = googleSignInClient.signInIntent
         startActivityForResult(signInIntent, RC_SIGN_IN)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         // Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
         if (requestCode == RC_SIGN_IN) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
@@ -97,11 +95,10 @@ class LoginActivity: AppCompatActivity() {
                         auth.currentUser!!.displayName!!,
                         ""
                     )
-
                     db.collection("users").document(user.email)
                         .set(user)
-
                     sendToMainActivity()
+
                 } else {
                     // If sign in fails, display a message to the user.
                     Timber.d(task.exception, "signInWithCredential:failure")

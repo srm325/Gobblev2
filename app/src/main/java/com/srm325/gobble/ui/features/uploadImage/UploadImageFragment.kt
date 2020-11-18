@@ -66,57 +66,62 @@ class UploadImageFragment : Fragment() {
 
         uploadBtn.setOnClickListener {
 
-            if(bitmap==null){
-                Toast.makeText(requireContext(), "Choose an image", Toast.LENGTH_SHORT).show()
-            }else{
-                main_group.visibility = View.GONE
-                progressBar.visibility = View.VISIBLE
+            if(address_field==null){
+                Toast.makeText(requireContext(), "Must type address", Toast.LENGTH_SHORT).show()
+            }else {
+                if (description_field == null) {
+                    Toast.makeText(requireContext(), "Must type description", Toast.LENGTH_SHORT).show()
+                } else {
 
-                val baos = ByteArrayOutputStream()
-                bitmap!!.compress(Bitmap.CompressFormat.JPEG, 100, baos)
-                val data = baos.toByteArray()
+                    main_group.visibility = View.GONE
+                    progressBar.visibility = View.VISIBLE
 
-                val storageRef = storage.reference
-                val currentTime = Timestamp(System.currentTimeMillis())
-                val filename = "$currentTime.jpg"
-                val imagesRef = storageRef.child("images/$filename")
-                val uploadTask = imagesRef.putBytes(data)
+                    val baos = ByteArrayOutputStream()
+                    bitmap!!.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+                    val data = baos.toByteArray()
 
-                val tsLong = System.currentTimeMillis() / 1000
-                val ts = tsLong.toString()
-                val urlTask = uploadTask.continueWithTask{
-                    imagesRef.downloadUrl
-                }.addOnCompleteListener{ taskSnapshot ->
+                    val storageRef = storage.reference
+                    val currentTime = Timestamp(System.currentTimeMillis())
+                    val filename = "$currentTime.jpg"
+                    val imagesRef = storageRef.child("images/$filename")
+                    val uploadTask = imagesRef.putBytes(data)
 
-                    imagesRef.downloadUrl.onSuccessTask {
-                        val post = Post(
-                            id = ts,
-                            user = viewModel.getCurrentUser(),
-                            description = description_field.text.toString(),
-                            image = taskSnapshot.result.toString()
-                        )
+                    val tsLong = System.currentTimeMillis() / 1000
+                    val ts = tsLong.toString()
+                    val urlTask = uploadTask.continueWithTask {
+                        imagesRef.downloadUrl
+                    }.addOnCompleteListener { taskSnapshot ->
 
-                        // add the post to firestore
-                        db.collection("posts").document(ts)
-                            .set(post)
-                            .addOnSuccessListener {
-                                main_group.visibility = View.VISIBLE
-                                progressBar.visibility = View.GONE
-                                bitmap = null
+                        imagesRef.downloadUrl.onSuccessTask {
+                            val post = Post(
+                                    id = ts,
+                                    user = viewModel.getCurrentUser(),
+                                    address = address_field.text.toString(),
+                                    description = description_field.text.toString(),
+                                    image = taskSnapshot.result.toString()
+                            )
 
-                                Toast.makeText(
-                                    requireContext(),
-                                    "Successfully Uploaded",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                            .addOnFailureListener { e ->
+                            // add the post to firestore
+                            db.collection("posts").document(ts)
+                                    .set(post)
+                                    .addOnSuccessListener {
+                                        main_group.visibility = View.VISIBLE
+                                        progressBar.visibility = View.GONE
+                                        bitmap = null
 
-                            }
+                                        Toast.makeText(
+                                                requireContext(),
+                                                "Successfully Uploaded",
+                                                Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                    .addOnFailureListener { e ->
+
+                                    }
+                        }
                     }
                 }
             }
-
 
         }
 

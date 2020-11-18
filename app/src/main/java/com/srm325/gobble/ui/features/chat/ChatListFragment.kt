@@ -1,33 +1,63 @@
 package com.srm325.gobble.ui.features.chat
 
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import com.google.android.gms.maps.*
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import com.srm325.gobble.R
+import timber.log.Timber
 
-class ChatListFragment : Fragment() {
+
+private lateinit var mMap: GoogleMap
+
+class ChatListFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         fun newInstance() = ChatListFragment()
     }
 
-    private lateinit var viewModel: ChatListViewModel
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
+        val fm: FragmentManager = childFragmentManager;
+        var mapFragment = fm.findFragmentById(R.id.map) as SupportMapFragment?
+
+
+        if (mapFragment == null) {
+            mapFragment = SupportMapFragment.newInstance();
+            fm.beginTransaction().replace(R.id.map, mapFragment).commit()
+            Timber.e("I tried")
+        }
+        if (mapFragment == null) {
+            Timber.e("Get fucked")
+        }else{
+            Timber.e("Map not null")
+            mapFragment.getMapAsync(this)
+        }
+
         return inflater.inflate(R.layout.chat_list_fragment, container, false)
+
+
+    }
+    override fun onMapReady(googleMap: GoogleMap) {
+        mMap = googleMap
+        val settings: UiSettings = mMap.uiSettings
+        settings.isZoomControlsEnabled = true
+        val current = LatLng(43.1226686, -77.5901883)
+        mMap.addMarker(MarkerOptions()
+                .position(current)
+                .title("Dinner location"))
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(current))
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-        viewModel = ViewModelProvider(this).get(ChatListViewModel::class.java)
-        // TODO: Use the ViewModel
-    }
 
 }
+
 /*
 import android.os.Bundle
 import android.view.LayoutInflater
