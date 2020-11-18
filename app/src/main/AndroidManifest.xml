@@ -27,9 +27,6 @@
             android:name="com.srm325.gobble.MainActivity"
             android:configChanges="orientation"
             android:screenOrientation="portrait">
-            android:screenOrientation="portrait">
-
-
         </activity>
     </application>
 

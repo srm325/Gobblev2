@@ -13,6 +13,7 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.android.synthetic.main.feed_fragment.*
 import kotlinx.coroutines.runBlocking
+import java.util.*
 
 class FeedFragment : Fragment(), FeedFragmentCallback {
 
@@ -43,6 +44,7 @@ class FeedFragment : Fragment(), FeedFragmentCallback {
                 for (document in result) {
                     val post = document.toObject(Post::class.java)
                     postList.add(post)
+                    postList.reverse()
                 }
                 val adapter = PostAdapter(postList, this)
                 feed_recyclerview.adapter = adapter
