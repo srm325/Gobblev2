@@ -9,16 +9,30 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
-import com.google.android.gms.maps.*
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.maps.CameraUpdateFactory.newLatLngBounds
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.UiSettings
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.srm325.gobble.R
+import com.srm325.gobble.data.Repository
+import com.srm325.gobble.data.model.Post
 import timber.log.Timber
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 private lateinit var mMap: GoogleMap
+private val repository = Repository()
+private lateinit var viewModel: MapViewModel
+val addressList: ArrayList<String> = ArrayList<String>(listOf(""))
 
 
 class ChatListFragment : Fragment(), OnMapReadyCallback {
@@ -29,12 +43,31 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
 
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+            inflater: LayoutInflater, container: ViewGroup?,
+            savedInstanceState: Bundle?
     ): View? {
         val fm: FragmentManager = childFragmentManager;
         var mapFragment = fm.findFragmentById(R.id.map) as SupportMapFragment?
+        val user = Firebase.auth.currentUser
+        val postList:MutableList<Post> = mutableListOf()
+        val db = Firebase.firestore
+        db.collection("posts")
+                .get()
+                .addOnSuccessListener { result ->
+                    for (document in result) {
+                        val post = document.toObject(Post::class.java)
+                        if (post.address != null) {
+                            addressList.add(post.address)
+                        }
+                    }
+                    Timber.e(addressList.size.toString())
+                    Timber.e(addressList.toString())
 
+
+
+                }
+        addressList.removeAt(0)
+        Timber.e(addressList.toString())
 
         if (mapFragment == null) {
             mapFragment = SupportMapFragment.newInstance();
@@ -50,51 +83,49 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
 
         return inflater.inflate(R.layout.chat_list_fragment, container, false)
 
-
+    }
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+        viewModel = ViewModelProvider(this).get(MapViewModel::class.java)
 
     }
+    fun getCurrentUser() = repository.getCurrentUser()
+
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        var test = "500 Joseph C Wilson Blvd Rochester NY"
         val settings: UiSettings = mMap.uiSettings
         settings.isZoomControlsEnabled = true
-        var address1 = getLocationFromAddress(activity, test) as LatLng
-        val current = LatLng(43.1226686, -77.5901883)
-        mMap.addMarker(
-            MarkerOptions()
-                .position(current)
-                .title("Dinner location")
-        )
-        mMap.addMarker(
-            MarkerOptions()
-                .position(address1)
-                .title("Dinner location")
-        )
         val builder = LatLngBounds.Builder()
-        builder.include(address1);
-        builder.include(current);
+        for (i in addressList) {
+            Timber.e(i)
+            var address123 = getLocationFromAddress(activity, i) as LatLng
+            Timber.e(address123.toString())
+            mMap.addMarker(
+                    MarkerOptions()
+                            .position(address123)
+                            .title("Dinner location")
+            )
+            builder.include(address123);
+        }
         val bounds = builder.build()
 
         mMap.animateCamera(newLatLngBounds(bounds, 15))
-
-
-
     }
 
-    fun getLocationFromAddress(context: Context?, strAddress: String?): LatLng? {
+    private fun getLocationFromAddress(context: Context?, strAddress: String?): LatLng? {
         val coder = Geocoder(context)
         val address: List<Address>?
-        var p1: LatLng? = null
+        var p1: LatLng = LatLng(0.0, 0.0)
         try {
             address = coder.getFromLocationName(strAddress, 5)
             if (address == null) {
-                return null
+                Timber.e("Address not found")
+            } else {
+                val location: Address = address[0]
+                p1 = LatLng(location.latitude, location.longitude)
+                mMap.addMarker(MarkerOptions().position(p1).title("Dinner location"))
+                Timber.e(p1.toString())
             }
-            val location: Address = address[0]
-            location.latitude
-            location.longitude
-            p1 = LatLng(location.latitude, location.longitude)
-            mMap.addMarker(MarkerOptions().position(p1).title("Dinner location"))
         } catch (e: Exception) {
             e.printStackTrace()
         }
