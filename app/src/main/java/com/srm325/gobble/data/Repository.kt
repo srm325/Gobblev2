@@ -19,7 +19,7 @@ class Repository {
     fun getCurrentUser() = User(
         user?.email!!,
         user.displayName!!,
-        ""
+        user.photoUrl.toString()
     )
 
     suspend fun getUser(userId : String) : DocumentSnapshot?{

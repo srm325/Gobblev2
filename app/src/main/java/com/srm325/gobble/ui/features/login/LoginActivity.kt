@@ -93,7 +93,7 @@ class LoginActivity: AppCompatActivity() {
                     val user = User(
                         auth.currentUser!!.email!!,
                         auth.currentUser!!.displayName!!,
-                        ""
+                        auth.currentUser!!.photoUrl.toString(),
                     )
                     db.collection("users").document(user.email)
                         .set(user)

@@ -12,6 +12,7 @@ import com.srm325.gobble.core.makeItVisible
 import com.srm325.gobble.data.model.Post
 import com.bumptech.glide.Glide
 import timber.log.Timber
+import java.lang.System.load
 
 class PostAdapter(var postList: List<Post>, val callback: FeedFragmentCallback) : RecyclerView.Adapter<PostViewHolder>() {
 
@@ -36,9 +37,15 @@ class PostAdapter(var postList: List<Post>, val callback: FeedFragmentCallback) 
             .placeholder(R.drawable.ic_loading)
             .into(holder.postImage)
 
+        Glide
+            .with(context)
+            .load(postList[position].user.image)
+            .dontAnimate()
+            .placeholder(R.drawable.ic_loading)
+            .into(holder.profileImage)
+
         holder.userName.text = postList[position].user.userName
         holder.description.text = postList[position].description
-
         holder.postContainer.setOnClickListener {
             val postId =  postList[position].id
             val action = if(postList[position].winner.isEmpty()) {

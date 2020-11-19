@@ -1,5 +1,8 @@
-package com.srm325.gobble.ui.features.chat
+package com.srm325.gobble.ui.features.map
 
+import android.content.Context
+import android.location.Address
+import android.location.Geocoder
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -7,13 +10,16 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import com.google.android.gms.maps.*
+import com.google.android.gms.maps.CameraUpdateFactory.newLatLngBounds
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.srm325.gobble.R
 import timber.log.Timber
 
 
 private lateinit var mMap: GoogleMap
+
 
 class ChatListFragment : Fragment(), OnMapReadyCallback {
 
@@ -22,8 +28,10 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
     }
 
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         val fm: FragmentManager = childFragmentManager;
         var mapFragment = fm.findFragmentById(R.id.map) as SupportMapFragment?
 
@@ -43,16 +51,54 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
         return inflater.inflate(R.layout.chat_list_fragment, container, false)
 
 
+
     }
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        var test = "500 Joseph C Wilson Blvd Rochester NY"
         val settings: UiSettings = mMap.uiSettings
         settings.isZoomControlsEnabled = true
+        var address1 = getLocationFromAddress(activity, test) as LatLng
         val current = LatLng(43.1226686, -77.5901883)
-        mMap.addMarker(MarkerOptions()
+        mMap.addMarker(
+            MarkerOptions()
                 .position(current)
-                .title("Dinner location"))
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(current))
+                .title("Dinner location")
+        )
+        mMap.addMarker(
+            MarkerOptions()
+                .position(address1)
+                .title("Dinner location")
+        )
+        val builder = LatLngBounds.Builder()
+        builder.include(address1);
+        builder.include(current);
+        val bounds = builder.build()
+
+        mMap.animateCamera(newLatLngBounds(bounds, 15))
+
+
+
+    }
+
+    fun getLocationFromAddress(context: Context?, strAddress: String?): LatLng? {
+        val coder = Geocoder(context)
+        val address: List<Address>?
+        var p1: LatLng? = null
+        try {
+            address = coder.getFromLocationName(strAddress, 5)
+            if (address == null) {
+                return null
+            }
+            val location: Address = address[0]
+            location.latitude
+            location.longitude
+            p1 = LatLng(location.latitude, location.longitude)
+            mMap.addMarker(MarkerOptions().position(p1).title("Dinner location"))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return p1
     }
 
 
