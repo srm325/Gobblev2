@@ -36,5 +36,5 @@
     <string name="nearest_recycling_center">Nearest Recycling Center:</string>
     <string name="Dinners_near_me">Near me</string>
     <string name="maps_api_key">AIzaSyBshqZH4cNdr0N9vxmwWibwZ0iE4pHY5bM</string>
-    <string name="tell_us_the_address">Tell us the address!</string>
+    <string name="tell_us_the_address">Where is it?</string>
 </resources>
