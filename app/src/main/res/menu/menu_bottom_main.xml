@@ -10,7 +10,7 @@
         android:id="@+id/uploadImageFragment"
         android:title="@string/create_post" />
     <item
-        android:icon="@drawable/ic_chat"
+        android:icon="@drawable/ic_map"
         android:id="@+id/chatListFragment"
         android:title="@string/Dinners_near_me" />
     <item

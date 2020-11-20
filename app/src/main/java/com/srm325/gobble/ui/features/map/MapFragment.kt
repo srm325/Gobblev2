@@ -1,23 +1,30 @@
 package com.srm325.gobble.ui.features.map
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
+import android.location.Location
+import android.os.Build
 import android.os.Bundle
+import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.ViewModelProvider
+import com.google.android.gms.location.*
+import com.google.android.gms.maps.*
 import com.google.android.gms.maps.CameraUpdateFactory.newLatLngBounds
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.UiSettings
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.*
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -33,12 +40,43 @@ private lateinit var mMap: GoogleMap
 private val repository = Repository()
 private lateinit var viewModel: MapViewModel
 val addressList: ArrayList<String> = ArrayList<String>(listOf(""))
+lateinit var mLocationRequest: LocationRequest
+var mLastLocation: Location? = null
+internal var mCurrLocationMarker: Marker? = null
+internal var mFusedLocationClient: FusedLocationProviderClient? = null
+var currentAdminArea : String = ""
 
 
 class ChatListFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         fun newInstance() = ChatListFragment()
+        const val MY_PERMISSIONS_REQUEST_LOCATION = 99
+    }
+
+    private var mLocationCallback: LocationCallback = object : LocationCallback() {
+        @SuppressLint("BinaryOperationInTimber")
+        override fun onLocationResult(locationResult: LocationResult) {
+            val locationList = locationResult.locations
+            if (locationList.isNotEmpty()) {
+                //The last location in the list is the newest
+                val location = locationList.last()
+                Timber.e("MapsActivity" + "Location: " + location.latitude + " " + location.longitude)
+                mLastLocation = location
+                if (mCurrLocationMarker != null) {
+                    mCurrLocationMarker?.remove()
+                }
+                //Place current location marker
+                val latLng = LatLng(location.latitude, location.longitude)
+                val markerOptions = MarkerOptions()
+                markerOptions.position(latLng)
+                markerOptions.title("Current Position")
+                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15F))
+                var currentAdminArea = getCityFromLatLng(activity, latLng) as String
+
+            }
+        }
     }
 
 
@@ -51,6 +89,7 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
         val user = Firebase.auth.currentUser
         val postList:MutableList<Post> = mutableListOf()
         val db = Firebase.firestore
+        mFusedLocationClient = activity?.let { LocationServices.getFusedLocationProviderClient(it) }
         db.collection("posts")
                 .get()
                 .addOnSuccessListener { result ->
@@ -90,27 +129,50 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
 
     }
     fun getCurrentUser() = repository.getCurrentUser()
-
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         val settings: UiSettings = mMap.uiSettings
         settings.isZoomControlsEnabled = true
-        val builder = LatLngBounds.Builder()
-        for (i in addressList) {
-            Timber.e(i)
-            var address123 = getLocationFromAddress(activity, i) as LatLng
-            Timber.e(address123.toString())
-            mMap.addMarker(
-                    MarkerOptions()
-                            .position(address123)
-                            .title("Dinner location")
-            )
-            builder.include(address123);
-        }
-        val bounds = builder.build()
+        mLocationRequest = LocationRequest()
+        mLocationRequest.interval = 120000 // 12s interval
+        mLocationRequest.fastestInterval = 120000
+        mLocationRequest.priority = LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY
 
-        mMap.animateCamera(newLatLngBounds(bounds, 15))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (context?.let {
+                        ContextCompat.checkSelfPermission(
+                                it,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                        )
+                    } == PackageManager.PERMISSION_GRANTED
+            ) {
+                //Location Permission already granted
+                mFusedLocationClient?.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper())
+                mMap.isMyLocationEnabled = true
+            } else {
+                //Request Location Permission
+                checkLocationPermission()
+            }
+        } else {
+            mFusedLocationClient?.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper())
+            mMap.isMyLocationEnabled = true
+        }
+        for (i in addressList) {
+            var county = getCityFromAddress(activity, i) as String
+            if (county == "Monroe County") {
+                var address123 = getLocationFromAddress(activity, i) as LatLng
+                Timber.e(address123.toString())
+                mMap.addMarker(
+                        MarkerOptions()
+                                .position(address123)
+                                .title("Dinner location")
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                )
+            }
+        }
+
     }
+
 
     private fun getLocationFromAddress(context: Context?, strAddress: String?): LatLng? {
         val coder = Geocoder(context)
@@ -123,9 +185,136 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
             } else {
                 val location: Address = address[0]
                 p1 = LatLng(location.latitude, location.longitude)
-                mMap.addMarker(MarkerOptions().position(p1).title("Dinner location"))
-                Timber.e(p1.toString())
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return p1
+    }
+    private fun checkLocationPermission() {
+        if (activity?.let {
+                    ActivityCompat.checkSelfPermission(
+                            it,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                    )
+                } != PackageManager.PERMISSION_GRANTED
+        ) {
+            // Should we show an explanation?
+            if (activity?.let {
+                        ActivityCompat.shouldShowRequestPermissionRationale(
+                                it,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                        )
+                    }!!
+            ) {
+                // Show an explanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+                context?.let {
+                    AlertDialog.Builder(it)
+                            .setTitle("Location Permission Needed")
+                            .setMessage("This app needs the Location permission, please accept to use location functionality")
+                            .setPositiveButton(
+                                    "OK"
+                            ) { _, _ ->
+                                //Prompt the user once explanation has been shown
+                                activity?.let { it1 ->
+                                    ActivityCompat.requestPermissions(
+                                            it1,
+                                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                                            MY_PERMISSIONS_REQUEST_LOCATION
+                                    )
+                                }
+                            }
+                            .create()
+                            .show()
+                }
+
+
+            } else {
+                // No explanation needed, we can request the permission.
+                activity?.let {
+                    ActivityCompat.requestPermissions(
+                            it,
+                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                            MY_PERMISSIONS_REQUEST_LOCATION
+                    )
+                }
+            }
+        }
+    }
+    override fun onRequestPermissionsResult(
+            requestCode: Int,
+            permissions: Array<String>, grantResults: IntArray
+    ) {
+        when (requestCode) {
+            MY_PERMISSIONS_REQUEST_LOCATION -> {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    // permission was granted, yay! Do the
+                    // location-related task you need to do.
+                    if (activity?.let {
+                                ContextCompat.checkSelfPermission(
+                                        it,
+                                        Manifest.permission.ACCESS_FINE_LOCATION
+                                )
+                            } == PackageManager.PERMISSION_GRANTED
+                    ) {
+
+                        mFusedLocationClient?.requestLocationUpdates(
+                                mLocationRequest,
+                                mLocationCallback,
+                                Looper.myLooper()
+                        )
+                        mMap.isMyLocationEnabled = true
+                    }
+
+                } else {
+
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                    Toast.makeText(activity, "permission denied", Toast.LENGTH_LONG).show()
+                }
+                return
+            }
+        }// other 'case' lines to check for other
+        // permissions this app might request
+    }
+    private fun getCityFromAddress(context: Context?, strAddress: String?): String? {
+        val coder = Geocoder(context)
+        val address: List<Address>?
+        var p1: String = ""
+        try {
+            address = coder.getFromLocationName(strAddress, 5)
+            if (address == null) {
+                Timber.e("Address not found")
+            } else {
+                val location: Address = address[0]
+                p1 = location.subAdminArea
+                Timber.e(p1)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return p1
+    }
+    private fun getCityFromLatLng(context: Context?, latlong: LatLng?): String? {
+        val coder = Geocoder(context)
+        val address: List<Address>?
+        var p1: String = ""
+        try {
+            if (latlong != null) {
+                address = coder.getFromLocation(latlong.latitude, latlong.longitude, 1)
+                if (address == null) {
+                    Timber.e("Address not found")
+                } else {
+                    val location: Address = address[0]
+                    p1 = location.subAdminArea
+                    Timber.e(p1)
+                }
+            }
+
         } catch (e: Exception) {
             e.printStackTrace()
         }
