@@ -73,8 +73,21 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
                 markerOptions.title("Current Position")
                 markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15F))
-                var currentAdminArea = getCityFromLatLng(activity, latLng) as String
-
+                currentAdminArea= getCityFromLatLng(activity, mLastLocation?.latitude?.let { mLastLocation?.longitude?.let { it1 -> LatLng(it, it1) } }) as String
+                Timber.e("Admin area$currentAdminArea")
+                for (i in addressList) {
+                    var county = getCityFromAddress(activity, i) as String
+                    if (county == currentAdminArea) {
+                        var address123 = getLocationFromAddress(activity, i) as LatLng
+                        Timber.e(address123.toString())
+                        mMap.addMarker(
+                                MarkerOptions()
+                                        .position(address123)
+                                        .title("Dinner location")
+                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                        )
+                    }
+                }
             }
         }
     }
@@ -129,12 +142,13 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
 
     }
     fun getCurrentUser() = repository.getCurrentUser()
+    @SuppressLint("BinaryOperationInTimber")
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         val settings: UiSettings = mMap.uiSettings
         settings.isZoomControlsEnabled = true
         mLocationRequest = LocationRequest()
-        mLocationRequest.interval = 120000 // 12s interval
+        mLocationRequest.interval = 600000 // 60s interval
         mLocationRequest.fastestInterval = 120000
         mLocationRequest.priority = LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY
 
@@ -156,19 +170,6 @@ class ChatListFragment : Fragment(), OnMapReadyCallback {
         } else {
             mFusedLocationClient?.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper())
             mMap.isMyLocationEnabled = true
-        }
-        for (i in addressList) {
-            var county = getCityFromAddress(activity, i) as String
-            if (county == "Monroe County") {
-                var address123 = getLocationFromAddress(activity, i) as LatLng
-                Timber.e(address123.toString())
-                mMap.addMarker(
-                        MarkerOptions()
-                                .position(address123)
-                                .title("Dinner location")
-                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
-                )
-            }
         }
 
     }
